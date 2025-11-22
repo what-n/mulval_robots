@@ -1,0 +1,24 @@
+1,"netdosAttack(pc1,pc2,modbus_tcp)","OR",0
+2,"RULE 2 (dos_flood attack)","AND",0
+3,"canAccessHost(pc1)","OR",0
+4,"RULE 14 (direct on-host netaccess)","AND",0
+5,"hasAccount(victim,pc1,root)","LEAF",1
+6,"attackerLocated(pc1)","LEAF",1
+7,"aclNW(pc1,pc2,modbus_tcp,502)","LEAF",1
+8,"networkServiceInfo(pc2,prom2,modbus_tcp,502,_)","LEAF",1
+9,"vulExists(pc2,'CVE-1',prom2,remoteExploit,dos_flood)","LEAF",1
+10,"netdosAttack(pc1,pc3,modbus_tcp)","OR",0
+11,"RULE 3 (dos_amplification attack)","AND",0
+12,"aclNW(pc2,pc3,modbus_tcp,502)","LEAF",1
+13,"vulExists(pc2,'CVE-2',prom2,remoteExploit,dos_amplification)","LEAF",1
+14,"netinjectAttack(pc2)","OR",0
+15,"RULE 8 (inject attack)","AND",0
+16,"netAccess(pc2,modbus_tcp,502)","OR",0
+17,"RULE 12 (multi-hop netaccess)","AND",0
+18,"vulExists(pc2,'CVE-5',prom2,remoteExploit,inject)","LEAF",1
+19,"netreplayAttack(pc1,pc2,modbus_tcp,502)","OR",0
+20,"RULE 6 (replay attack)","AND",0
+21,"netspoofAttack(pc1,pc2,modbus_tcp,502)","OR",0
+22,"RULE 0 (remote exploit of a server program)","AND",0
+23,"vulExists(pc2,'CVE-3',prom2,remoteExploit,spoof)","LEAF",1
+24,"vulExists(pc2,'CVE-4',prom2,remoteExploit,replay)","LEAF",1

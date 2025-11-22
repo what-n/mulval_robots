@@ -1,0 +1,45 @@
+/* problem file */
+/****************/
+/* 定义目标 */
+attackGoal(netdosAttack(pc1, pc2, _)). 
+attackGoal(netdosAttack(pc1, pc3, _)). 
+attackGoal(netreplayAttack(pc1, pc2, _, _)).
+attackGoal(netinjectAttack(pc2)). 
+
+/* 网络拓扑和通信情况 */
+attackerLocated(pc1).
+isServer(pc2).
+isRobot(pc3).
+isRobot(pc4).
+/* 链路层定义 */
+l2connection(pc1, pc2, can).
+l2connection(pc2, pc1, can).
+l2connection(pc2, pc3, can).
+l2connection(pc3, pc2, can).
+l2connection(pc2, pc4, can).
+l2connection(pc4, pc2, can).
+/* 应用层的通信定义 */
+aclNW(pc1, pc2, modbus_tcp, 502).
+aclNW(pc2, pc1, modbus_tcp, 502). 
+aclNW(pc2, pc3, modbus_tcp, 502).    
+aclNW(pc3, pc2, modbus_tcp, 502).   
+aclNW(pc2, pc4, modbus_tcp, 502). 
+aclNW(pc4, pc2, modbus_tcp, 502). 
+
+/* 主机配置 */
+hasAccount(victim, pc1, root).
+linkServiceInfo(pc1, prom1, can, _).
+networkServiceInfo(pc1, prom1, modbus_tcp, 502, _).
+linkServiceInfo(pc2, prom2, can, _).
+networkServiceInfo(pc2, prom2, modbus_tcp, 502, _).
+linkServiceInfo(pc3, prom3, can, _).
+networkServiceInfo(pc3, prom3, modbus_tcp, 502, _).
+linkServiceInfo(pc4, prom4, can, _).
+networkServiceInfo(pc4, prom4, modbus_tcp, 502, _).
+
+/* 漏洞信息 */
+vulExists(pc2, 'CVE-1', prom2, remoteExploit, dos_flood).
+vulExists(pc2, 'CVE-2', prom2, remoteExploit, dos_amplification).
+vulExists(pc2, 'CVE-3', prom2, remoteExploit, spoof).
+vulExists(pc2, 'CVE-4', prom2, remoteExploit, replay).
+vulExists(pc2, 'CVE-5', prom2, remoteExploit, inject).

@@ -1,0 +1,9 @@
+attackerLocated(pc1).
+attackGoal(dosAttack(pc1, server, _, _)).
+
+hacl(pc1, server, tcp, 80).
+/* hacl(H,H,_,_). */
+
+/* configuration information of Server */
+vulExists(server, 'CAN-2002-0392', httpd, remoteExploit, dos_flood).
+networkServiceInfo(server , httpd, tcp , 80 , apache).

@@ -1,0 +1,14 @@
+:-(mvTrc(dos_attack(_h3240,_h3241,_h3242,_h3243,0)),','(vulExists(_h3241,_h3249,_h3250,remoteExploit,dos_flood),','(networkServiceInfo(_h3241,_h3250,_h3242,_h3243,_h3261),','(hacl(_h3240,_h3241,_h3242,_h3243),','(mvTrc(netAccess(_h3240,_h3242,_h3243,_h3339)),assert_trace(because(0,rule_desc('dos(flood) attack',1.0),dos_attack(_h3240,_h3241,_h3242,_h3243),[netAccess(_h3240,_h3242,_h3243),hacl(_h3240,_h3241,_h3242,_h3243),networkServiceInfo(_h3241,_h3250,_h3242,_h3243,_h3261),vulExists(_h3241,_h3249,_h3250,remoteExploit,dos_flood)]))))))).
+
+:-(mvTrc(dos_attack(_h3240,_h3241,_h3242,_h3243,1)),','(vulExists(_h3248,_h3249,_h3250,remoteExploit,dos_amplification),','(networkServiceInfo(_h3248,_h3250,_h3242,_h3243,_h3261),','(hacl(_h3240,_h3248,_h3242,_h3243),','(hacl(_h3248,_h3241,_h3242,_h3243),','(mvTrc(netAccess(_h3240,_h3242,_h3243,_h3352)),assert_trace(because(1,rule_desc('dos(amplification) attack',1.0),dos_attack(_h3240,_h3241,_h3242,_h3243),[netAccess(_h3240,_h3242,_h3243),hacl(_h3248,_h3241,_h3242,_h3243),hacl(_h3240,_h3248,_h3242,_h3243),networkServiceInfo(_h3248,_h3250,_h3242,_h3243,_h3261),vulExists(_h3248,_h3249,_h3250,remoteExploit,dos_amplification)])))))))).
+
+:-(mvTrc(reply_attack(_h3240,_h3241,_h3242,_h3243,_h3244,2)),','(vulExists(_h3242,_h3250,_h3251,remoteExploit,reply),','(networkServiceInfo(_h3242,_h3251,_h3243,_h3244,_h3262),','(hacl(_h3241,_h3242,_h3243,_h3244),','(hacl(_h3240,_h3242,_h3243,_h3244),','(mvTrc(netAccess(_h3240,_h3243,_h3244,_h3353)),assert_trace(because(2,rule_desc('reply attack',1.0),reply_attack(_h3240,_h3241,_h3242,_h3243,_h3244),[netAccess(_h3240,_h3243,_h3244),hacl(_h3240,_h3242,_h3243,_h3244),hacl(_h3241,_h3242,_h3243,_h3244),networkServiceInfo(_h3242,_h3251,_h3243,_h3244,_h3262),vulExists(_h3242,_h3250,_h3251,remoteExploit,reply)])))))))).
+
+:-(mvTrc(inject_attack(_h3240,_h3241,3)),','(vulExists(_h3240,_h3247,_h3248,remoteExploit,inject),','(networkServiceInfo(_h3240,_h3248,_h3257,_h3258,_h3241),','(mvTrc(netAccess(_h3240,_h3257,_h3258,_h3324)),assert_trace(because(3,rule_desc('inject attack',1.0),inject_attack(_h3240,_h3241),[netAccess(_h3240,_h3257,_h3258),networkServiceInfo(_h3240,_h3248,_h3257,_h3258,_h3241),vulExists(_h3240,_h3247,_h3248,remoteExploit,inject)])))))).
+
+:-(mvTrc(execCode(_h3240,_h3241,4)),','(mvTrc(inject_attack(_h3240,_h3241,_h3295)),assert_trace(because(4,rule_desc('inject_attack lead to exploit',1.0),execCode(_h3240,_h3241),[inject_attack(_h3240,_h3241)])))).
+
+:-(mvTrc(netAccess(_h3240,_h3241,_h3242,5)),','(attackerLocated(_h3247),','(hacl(_h3247,_h3240,_h3241,_h3242),assert_trace(because(5,rule_desc('direct network access',1.0),netAccess(_h3240,_h3241,_h3242),[hacl(_h3247,_h3240,_h3241,_h3242),attackerLocated(_h3247)]))))).
+
+:-(mvTrc(netAccess(_h3240,_h3241,_h3242,6)),','(attackerLocated(_h3240),assert_trace(because(6,rule_desc('direct on-host access',1.0),netAccess(_h3240,_h3241,_h3242),[attackerLocated(_h3240)])))).
+

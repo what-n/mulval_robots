@@ -1,0 +1,54 @@
+primitive(inCompetent,1).
+primitive(competent,1).
+primitive(vulExists,3).
+primitive(vulProperty,3).
+primitive(vulExists,5).
+primitive(hacl,4).
+primitive(attackerLocated,1).
+primitive(networkServiceInfo,5).
+primitive(hasAccount,3).
+primitive(canAccessFile,4).
+primitive(clientProgram,2).
+primitive(setuidProgramInfo,3).
+primitive(installed,2).
+primitive(isWebServer,1).
+primitive(localFileProtection,4).
+primitive(nfsExportInfo,4).
+primitive(nfsMounted,5).
+primitive(dependsOn,3).
+primitive(bugHyp,4).
+derived(execCode,2).
+derived(netAccess,3).
+derived(canAccessHost,1).
+derived(accessFile,3).
+derived(accessMaliciousInput,3).
+derived(principalCompromised,1).
+derived(dos,1).
+derived(logInService,3).
+derived(dosAttack,4).
+derived(replyAttack,5).
+derived(injectAttack,2).
+meta(cvss,2).
+meta(attackGoal,1).
+meta(advances,2).
+
+attack(dosAttack(pc1,server,tcp,11311)).
+
+possible_duplicate_trace_step(because(11,rule_desc('direct on-host access',1.0),netAccess(pc1,tcp,11311),[attackerLocated(pc1)])).
+
+possible_duplicate_trace_step(because(0,rule_desc('dos_flood attack',1.0),dosAttack(pc1,server,tcp,11311),[netAccess(pc1,tcp,11311),hacl(pc1,server,tcp,11311),networkServiceInfo(server,ros,tcp,11311,apache),vulExists(server,'CVE-1',ros,remoteExploit,dos_flood)])).
+
+attack(dosAttack(pc1,robot,tcp,11311)).
+
+possible_duplicate_trace_step(because(1,rule_desc('dos_amplification attack',1.0),dosAttack(pc1,robot,tcp,11311),[netAccess(pc1,tcp,11311),hacl(server,robot,tcp,11311),hacl(pc1,server,tcp,11311),networkServiceInfo(server,ros,tcp,11311,apache),vulExists(server,'CVE-2',ros,remoteExploit,dos_amplification)])).
+
+attack(replyAttack(pc1,robot,server,tcp,11311)).
+
+possible_duplicate_trace_step(because(2,rule_desc('reply attack',1.0),replyAttack(pc1,robot,server,tcp,11311),[netAccess(pc1,tcp,11311),hacl(pc1,server,tcp,11311),hacl(robot,server,tcp,11311),networkServiceInfo(server,ros,tcp,11311,apache),vulExists(server,'CVE-3',ros,remoteExploit,reply)])).
+
+attack(injectAttack(server,apache)).
+
+possible_duplicate_trace_step(because(10,rule_desc('direct network access',1.0),netAccess(server,tcp,11311),[hacl(pc1,server,tcp,11311),attackerLocated(pc1)])).
+
+possible_duplicate_trace_step(because(3,rule_desc('inject attack',1.0),injectAttack(server,apache),[netAccess(server,tcp,11311),networkServiceInfo(server,ros,tcp,11311,apache),vulExists(server,'CVE-4',ros,remoteExploit,inject)])).
+

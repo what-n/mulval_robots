@@ -1,0 +1,27 @@
+/* problem file */
+attackerLocated(pc1).
+attackGoal(dosAttack(pc1, server, _, _)).
+attackGoal(dosAttack(pc1, robot, _, _)).
+attackGoal(replyAttack(pc1, robot, server, _, _)).
+attackGoal(injectAttack(server, _)).  
+
+
+hacl(pc1, server, tcp, 11311).
+hacl(server, pc1, tcp, 11311).
+hacl(pc2, server, tcp, 11311).
+hacl(server, pc2, tcp, 11311).
+hacl(robot, server, tcp, 11311).
+hacl(server, robot, tcp, 11311).
+/* hacl(H,H,_,_). */
+
+/* configuration information of Server */
+vulExists(server, 'CVE-1', ros, remoteExploit, dos_flood).
+vulExists(server, 'CVE-2', ros, remoteExploit, dos_amplification).
+vulExists(server, 'CVE-3', ros, remoteExploit, reply).
+vulExists(server, 'CVE-4', ros, remoteExploit, inject).
+
+networkServiceInfo(server , ros, tcp , 11311 , apache).
+networkServiceInfo(pc1 , ros, tcp , 11311 , apache).
+networkServiceInfo(pc2 , ros, tcp , 11311 , apache).
+networkServiceInfo(robot , ros, tcp , 11311 , apache).
+

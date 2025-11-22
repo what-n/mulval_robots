@@ -1,0 +1,14 @@
+attackerLocated(internet).
+attackGoal(execCode(webServer,_)).
+
+hacl(internet, webServer, tcp, 80).
+hacl(webServer, _,  _, _).
+hacl(fileServer, _, _, _).
+hacl(workStation, _, _, _).
+hacl(H,H,_,_).
+
+/* configuration information of webServer */
+vulExists(webServer, 'CAN-2002-0392', httpd, remoteExploit, privEscalation).
+vulnerabilitySeverity('CAN-2002-0392', high).
+networkServiceInfo(webServer , httpd, tcp , 80 , apache).
+

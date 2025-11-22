@@ -1,0 +1,128 @@
+% MulVAL interaction rules
+% Author : Xinming Ou, Su Zhang
+% Copyright (C) 2011, Argus Cybersecurity Lab, Kansas State University
+
+% This program is free software: you can redistribute it and/or modify
+% it under the terms of the GNU General Public License as published by
+% the Free Software Foundation, either version 3 of the License, or
+% (at your option) any later version.
+% 
+% This program is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+% 
+% You should have received a copy of the GNU General Public License
+% along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+/* 针对工业机械臂最小的网络系统进行建模，总结出对应的域文件 */
+/* 由于需要展现攻击路径的多跳，漏洞关注于提权漏洞，将原有的账号建模改为权限建模 */
+
+/******************************************************/
+/****         Predicates Declaration              *****/
+/******************************************************/
+/* 定义了两类谓词，原始谓词和派生谓词 */
+
+/* 描述网络拓扑和通信情况 */
+/* 存在机械臂和网络服务器，链路层和应用层进行网络连接 */
+primitive(isWebServer(_host)).
+primitive(isRobot(_host)).
+
+primitive(l2connection(_src, _dst, _prot)).
+primitive(aclNW(_src, _dst, _prot, _port)).
+
+
+/* 描述主体能力 */
+/* 主体可以访问主机的网络服务，可以控制主机，控制主机以shell为代表，有高权限和低权限之分 */
+primitive(attackerLocated(_host)).
+derived(netAccess(_machine,_protocol,_port)).
+derived(l2Access(_machine,_protocol)).
+derived(canControlHostShell(_host, _perm)).
+derived(execCode(_host, _perm)).
+
+/* 描述主机配置 */
+primitive(networkServiceInfo(_host, _program, _protocol, _port, _perm)).
+primitive(linkServiceInfo(_host, _program, _protocol, _perm)).
+primitive(hasAccount(_principal, _host, _account, _perm)).
+
+/* 描述漏洞信息 */
+primitive(vulExists(_host, _vulID, _program)).
+primitive(vulProperty(_vulID, _range, _consequence)).
+primitive(vulExists(_machine,_vulID,_program,_range, _consequence)).
+
+meta(cvss(_vulID, _ac)).
+meta(attackGoal(_)).
+meta(advances(_, _)).
+/******************************************************/
+/****         Tabling Predicates                  *****/
+/*   All derived predicates should be tabled          */
+/******************************************************/
+/* 对这些谓词进行tabel化，可以提升推理推理效率 */
+:- table execCode/2.
+:- table netAccess/3.
+:- table l2Access/2.
+:- table canControlHostShell/2.
+:- table vulExists/5.
+
+/******************************************************/
+/****         Interaction Rules                   *****/
+/******************************************************/
+
+/* 设计交互规则，这是文件的核心部分，定义了各种攻击场景的推理规则 */
+/* 在mulval的推理引擎下，是从attack_goal开始反推，不断判断各种交互规则是否满足 */
+
+/********** Section execCode ***********/
+/* 主体在该主机上具有恶意执行任意代码的能力 */
+/* 分别通过链路层和网络上的漏洞实现 */
+
+
+/******** Section l2Access ********/
+/* 描述主体可以通过连接层访问主机的能力 */
+
+
+/******** Section netAccess ********/
+/* 描述主体可以通过网络访问主机的能力 */
+
+
+/****** Section canControlHost ******/
+/* 主体具有在该主机执行任意代码的能力 */
+interaction_rule(
+  (canControlHost(H) :-
+	execCode(H, _Perm)),
+  rule_desc('Access a host through executing code on the machine',
+  1.0)).
+/* 主体拥有该主机，且有账号 */
+interaction_rule(
+  (canControlHost(H) :-
+	attackerLocated(H),
+  hasAccount(victim, H, _account)),
+  rule_desc('direct on-host netaccess',
+  1.0)).
+/* 主体可以通过网络访问该主机，且该主机开放此服务，并且主体拥有账号 */
+interaction_rule(
+  (canControlHost(H) :-
+	netAccess(H,Prot,Port),
+  networkServiceInfo(H, _program, Prot, Port, _user),
+  hasAccount(victim, H, _account)),
+  rule_desc('direct on-host netaccess',
+  1.0)).
+/* 主体可以通过连接层访问该主机，且该主机开放此服务，并且主体拥有账号 */
+interaction_rule(
+  (canControlHost(H) :-
+	l2Access(H,Prot),
+  linkServiceInfo(H, _program, Prot, _user),
+  hasAccount(victim, H, _account)),
+  rule_desc('direct on-host netaccess',
+  1.0)).
+/********************************************************/
+/*      Software specific knowledge                     */
+/********************************************************/
+
+/* 根据漏洞属性信息扩展 */
+interaction_rule(
+  (vulExists(H, ID, Sw, Range, Consequence):-
+	vulExists(H, ID, Sw),
+	vulProperty(ID, Range, Consequence)),
+  rule_desc('',
+  1)).
+

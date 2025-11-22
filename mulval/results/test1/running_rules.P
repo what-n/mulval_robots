@@ -1,0 +1,159 @@
+% MulVAL interaction rules
+% Author : Xinming Ou, Su Zhang
+% Copyright (C) 2011, Argus Cybersecurity Lab, Kansas State University
+
+% This program is free software: you can redistribute it and/or modify
+% it under the terms of the GNU General Public License as published by
+% the Free Software Foundation, either version 3 of the License, or
+% (at your option) any later version.
+% 
+% This program is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+% 
+% You should have received a copy of the GNU General Public License
+% along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+/******************************************************/
+/****         Predicates Declaration              *****/
+/******************************************************/
+
+primitive(inCompetent(_principal)).
+primitive(competent(_principal)).
+primitive(clientProgram(_host, _programname)).
+primitive(vulProperty(_vulID, _range, _consequence)).
+primitive(vulnerabilitySeverity(_vulID, _severity)).  % 新增：漏洞严重程度
+primitive(hacl(_src, _dst, _prot, _port)).
+primitive(attackerLocated(_host)).
+primitive(hasAccount(_principal, _host, _account)).
+primitive(networkServiceInfo(_host, _program, _protocol, _port, _user)).
+primitive(setuidProgramInfo(_host, _program, _owner)).
+primitive(nfsExportInfo(_server, _path, _access, _client)).
+primitive(nfsMounted(_client, _clientpath, _server, _serverpath, _access)).
+primitive(localFileProtection(_host, _user, _access, _path)).
+primitive(dependsOn(_h, _program, _library)).
+primitive(installed(_h, _program)).
+primitive(bugHyp(_,_,_,_)).
+primitive(vulExists(_machine,_vulID,_program,_range,_consequence)).
+/* primitive(vulExists(_machine,_vulID,_program,_range,_consequence,_severity)). */
+primitive(canAccessFile(_host, _user, _access, _path)).
+primitive(isWebServer(_host)).
+meta(cvss(_vulID, _ac)).
+
+
+derived(execCode(_host, _user)).
+derived(netAccess(_machine,_protocol,_port)).
+derived(canAccessHost(_host)).
+derived(accessFile(_machine,_access,_filepath)).
+derived(accessMaliciousInput(_host, _principal, _program)).
+derived(principalCompromised(_victim)).
+derived(dos(_host)).
+derived(logInService(_host, _protocol, _port)).
+derived(dos(_host, _host, _protocol, _port)).
+
+derived(dos_attack(_h1, _h2, _protocol, _port)).
+derived(reply_attack(_h3, _h1, _h2, _protocol, _port)).
+derived(inject_attack(_h, _perm)).
+
+meta(attackGoal(_)).
+meta(advances(_, _)).
+
+/******************************************************/
+/****         Tabling Predicates                  *****/
+/*   All derived predicates should be tabled          */
+/******************************************************/
+
+:- table execCode/2.
+:- table netAccess/3.
+:- table canAccessHost/1.
+:- table canAccessFile/4.
+:- table accessFile/3.
+:- table principalCompromised/1.
+:- table vulExists/5.
+/* :- table vulExists/6. */
+:- table logInService/3.
+
+
+
+/******************************************************/
+/****         Interaction Rules                   *****/
+/******************************************************/
+
+/************** dos attack *************/
+
+interaction_rule(
+  (dos_attack(H1, H2, Protocol, Port) :-
+  vulExists(H2, _, Software, remoteExploit, dos_flood),
+	networkServiceInfo(H2, Software, Protocol, Port, Perm),
+  hacl(H1, H2, Protocol, Port),
+	netAccess(H1, Protocol, Port)),
+  rule_desc('dos(flood) attack',
+  1.0)).
+
+interaction_rule(
+  (dos_attack(H1, H2, Protocol, Port) :-
+  vulExists(H3, _, Software, remoteExploit, dos_amplification),
+	networkServiceInfo(H3, Software, Protocol, Port, Perm),
+	hacl(H1, H3, Protocol, Port),
+  hacl(H3, H2, Protocol, Port),
+  netAccess(H1, Protocol, Port)),
+  rule_desc('dos(amplification) attack',
+  1.0)).
+
+/************** reply attack *************/
+interaction_rule(
+  (reply_attack(H3, H1, H2, Protocol, Port) :-
+  vulExists(H2, _, Software, remoteExploit, reply),
+	networkServiceInfo(H2, Software, Protocol, Port, Perm),
+	hacl(H1, H2, Protocol, Port),
+  hacl(H3, H2, Protocol, Port),
+  netAccess(H3, Protocol, Port)),
+  rule_desc('reply attack',
+  1.0)).
+
+/************** inject attack *************/
+interaction_rule(
+  (inject_attack(H, Perm) :-
+	vulExists(H, _, Software, remoteExploit, inject),
+	networkServiceInfo(H, Software, Protocol, Port, Perm),
+	netAccess(H, Protocol, Port)),
+  rule_desc('inject attack',
+  1.0)).
+
+interaction_rule(
+  (execCode(H, Perm) :-
+	inject_attack(H, Perm)),
+  rule_desc('inject_attack lead to exploit',
+  1.0)).
+
+
+
+
+/* Singleton variable at head
+interaction_rule(
+ (execCode( Attacker, Host, _) :-
+   execCode(Attacker, Host, root)),
+  'execution at any level if root execution').
+*/
+
+
+
+/******** Section netAccess ********/
+/* accessing a host through network according to a hacl policy.
+   For now we assume that every user on a local
+   machine has access to network. this may change
+   later. */
+
+interaction_rule(
+  (netAccess(H, Protocol, Port) :-
+	attackerLocated(Zone),
+	hacl(Zone, H, Protocol, Port)),
+  rule_desc('direct network access',
+  1.0)).
+
+interaction_rule(
+  (netAccess(H, Protocol, Port) :-
+	attackerLocated(H)),
+  rule_desc('direct on-host access',
+  1.0)).

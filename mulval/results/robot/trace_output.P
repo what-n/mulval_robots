@@ -1,0 +1,54 @@
+primitive(isServer,1).
+primitive(isRobot,1).
+primitive(attackerLocated,1).
+primitive(l2connection,3).
+primitive(aclNW,4).
+primitive(networkServiceInfo,5).
+primitive(linkServiceInfo,4).
+primitive(hasAccount,3).
+primitive(vulExists,3).
+primitive(vulProperty,3).
+primitive(vulExists,5).
+derived(netAccess,3).
+derived(l2Access,2).
+derived(canAccessHost,1).
+derived(execCode,2).
+derived(netspoofAttack,4).
+derived(netdosAttack,3).
+derived(netreplayAttack,4).
+derived(netinjectAttack,1).
+derived(linkspoofAttack,3).
+derived(linkdosAttack,3).
+derived(linkreplayAttack,3).
+meta(cvss,2).
+meta(attackGoal,1).
+meta(advances,2).
+
+attack(netdosAttack(pc1,pc2,modbus_tcp)).
+
+possible_duplicate_trace_step(because(14,rule_desc('direct on-host netaccess',1.0),canAccessHost(pc1),[hasAccount(victim,pc1,root),attackerLocated(pc1)])).
+
+possible_duplicate_trace_step(because(14,rule_desc('direct on-host netaccess',1.0),canAccessHost(pc1),[hasAccount(victim,pc1,root),attackerLocated(pc1)])).
+
+possible_duplicate_trace_step(because(12,rule_desc('multi-hop netaccess',1.0),netAccess(pc2,modbus_tcp,502),[aclNW(pc1,pc2,modbus_tcp,502),canAccessHost(pc1)])).
+
+possible_duplicate_trace_step(because(11,rule_desc('multi-hop l2access',1.0),l2Access(pc2,can),[l2connection(pc1,pc2,can),canAccessHost(pc1)])).
+
+possible_duplicate_trace_step(because(2,rule_desc('dos_flood attack',1.0),netdosAttack(pc1,pc2,modbus_tcp),[canAccessHost(pc1),aclNW(pc1,pc2,modbus_tcp,502),networkServiceInfo(pc2,prom2,modbus_tcp,502,_h3440),vulExists(pc2,'CVE-1',prom2,remoteExploit,dos_flood)])).
+
+attack(netdosAttack(pc1,pc3,modbus_tcp)).
+
+possible_duplicate_trace_step(because(3,rule_desc('dos_amplification attack',1.0),netdosAttack(pc1,pc3,modbus_tcp),[canAccessHost(pc1),aclNW(pc2,pc3,modbus_tcp,502),aclNW(pc1,pc2,modbus_tcp,502),networkServiceInfo(pc2,prom2,modbus_tcp,502,_h3578),vulExists(pc2,'CVE-2',prom2,remoteExploit,dos_amplification)])).
+
+attack(netreplayAttack(pc1,pc2,modbus_tcp,502)).
+
+possible_duplicate_trace_step(because(0,rule_desc('remote exploit of a server program',1.0),netspoofAttack(pc1,pc2,modbus_tcp,502),[aclNW(pc1,pc2,modbus_tcp,502),canAccessHost(pc1),networkServiceInfo(pc2,prom2,modbus_tcp,502,_h3777),vulExists(pc2,'CVE-3',prom2,remoteExploit,spoof)])).
+
+possible_duplicate_trace_step(because(6,rule_desc('replay attack',1.0),netreplayAttack(pc1,pc2,modbus_tcp,502),[netspoofAttack(pc1,pc2,modbus_tcp,502),vulExists(pc2,'CVE-4',prom2,remoteExploit,replay)])).
+
+attack(netinjectAttack(pc2)).
+
+possible_duplicate_trace_step(because(12,rule_desc('multi-hop netaccess',1.0),netAccess(pc2,modbus_tcp,502),[aclNW(pc1,pc2,modbus_tcp,502),canAccessHost(pc1)])).
+
+possible_duplicate_trace_step(because(8,rule_desc('inject attack',1.0),netinjectAttack(pc2),[netAccess(pc2,modbus_tcp,502),networkServiceInfo(pc2,prom2,modbus_tcp,502,_h3754),vulExists(pc2,'CVE-5',prom2,remoteExploit,inject)])).
+

@@ -1,0 +1,261 @@
+% MulVAL interaction rules
+% Author : Xinming Ou, Su Zhang
+% Copyright (C) 2011, Argus Cybersecurity Lab, Kansas State University
+
+% This program is free software: you can redistribute it and/or modify
+% it under the terms of the GNU General Public License as published by
+% the Free Software Foundation, either version 3 of the License, or
+% (at your option) any later version.
+% 
+% This program is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+% 
+% You should have received a copy of the GNU General Public License
+% along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+/* 该版本建模的四种攻击方式：spoof、dos、replay、inject ，针对链路层和应用层对通信协议建模 */
+/* 该版本对多余的谓词进行了删减 */
+/******************************************************/
+/****         Predicates Declaration              *****/
+/******************************************************/
+
+/* 定义了两类谓词，原始谓词和派生谓词 */
+/* 描述网络拓扑和通信情况 */
+primitive(isServer(_host)).
+primitive(isRobot(_host)).
+primitive(attackerLocated(_host)).
+primitive(l2connection(_src, _dst, _prot)).
+primitive(aclNW(_src, _dst, _prot, _port)).
+
+/* 描述主体能力 */
+derived(netAccess(_machine,_protocol,_port)).
+derived(l2Access(_machine,_protocol)).
+derived(canAccessHost(_host)).
+derived(execCode(_host, _user)).
+
+derived(netspoofAttack(_h1, _h2, _protocol, _port)).
+derived(netdosAttack(_h1, _h2, _protocol)).
+derived(netreplayAttack(_h1, _h2, _protocol, _port)).
+derived(netinjectAttack(_h)). 
+derived(linkspoofAttack(_h1, _h2, _protocol)).
+derived(linkdosAttack(_h1, _h2, _protocol)).
+derived(linkreplayAttack(_h1, _h2, _protocol)).
+
+/* 描述主机配置 */
+primitive(networkServiceInfo(_host, _program, _protocol, _port, _user)).
+primitive(linkServiceInfo(_host, _program, _protocol, _user)).
+primitive(hasAccount(_principal, _host, _account)).
+
+/* 描述漏洞信息 */
+primitive(vulExists(_host, _vulID, _program)).
+primitive(vulProperty(_vulID, _range, _consequence)).
+primitive(vulExists(_machine,_vulID,_program,_range,_consequence)).
+
+meta(cvss(_vulID, _ac)).
+meta(attackGoal(_)).
+meta(advances(_, _)).
+
+/******************************************************/
+/****         Tabling Predicates                  *****/
+/*   All derived predicates should be tabled          */
+/******************************************************/
+
+/* 对这些谓词进行tabel化，可以提升推理推理效率 */
+
+:- table execCode/2.
+:- table netAccess/3.
+:- table l2Access/2.
+:- table canAccessHost/1.
+:- table vulExists/5.
+
+:- table netspoofAttack/4.
+:- table netdosAttack/3.
+:- table netreplayAttack/4.
+:- table netinjectAttack/1.
+
+:- table linkspoofAttack/3.
+:- table linkdosAttack/3.
+:- table linkreplayAttack/3.
+
+/******************************************************/
+/****         Interaction Rules                   *****/
+/******************************************************/
+
+/* 设计交互规则，这是文件的核心部分，定义了各种攻击场景的推理规则 */
+/* 在mulval的推理引擎下，是从attack_goal开始反推，不断判断各种交互规则是否满足 */
+
+/************** spoof attack *************/
+/* spoof攻击可以发生在链路层or应用层 */
+/* spoof攻击的前提是目标主机上存在相关漏洞，并且主体可以操控一台主机用相关的通信协议访问目标机 */
+interaction_rule(
+  (netspoofAttack(H1, H2, Protocol, Port) :-
+	vulExists(H2, _, Software, remoteExploit, spoof),
+	networkServiceInfo(H2, Software, Protocol, Port, Perm),
+	canAccessHost(H1),
+  aclNW(H1, H2, Protocol, Port)),
+  rule_desc('remote exploit of a server program',
+  1.0)).
+
+interaction_rule(
+  (linkspoofAttack(H1, H2, Protocol) :-
+	vulExists(H2, _, Software, remoteExploit, spoof),
+	linkServiceInfo(H2, Software, Protocol, Perm),
+	canAccessHost(H1),
+  l2connection(H1, H2, Protocol)),
+  rule_desc('remote exploit of a server program',
+  1.0)).
+
+/************** dos attack *************/
+/* 主体进行两类的dos攻击：flood和amplification */
+interaction_rule(
+  (netdosAttack(H1, H2, Protocol) :-
+  vulExists(H2, _, Software, remoteExploit, dos_flood),
+	networkServiceInfo(H2, Software, Protocol, Port, Perm),
+  aclNW(H1, H2, Protocol, Port),
+  canAccessHost(H1)),
+  rule_desc('dos_flood attack',
+  1.0)). 
+
+interaction_rule(
+  (netdosAttack(H1, H2, Protocol) :-
+  vulExists(H3, _, Software, remoteExploit, dos_amplification),
+	networkServiceInfo(H3, Software, Protocol, Port1, Perm),
+	aclNW(H1, H3, Protocol, Port1),
+  aclNW(H3, H2, Protocol, Port2),
+  canAccessHost(H1)),
+  rule_desc('dos_amplification attack',
+  1.0)). 
+
+interaction_rule(
+  (linkdosAttack(H1, H2, Protocol) :-
+  vulExists(H2, _, Software, remoteExploit, dos_flood),
+	linkServiceInfo(H2, Software, Protocol, Perm),
+  l2connection(H1, H2, Protocol),
+  canAccessHost(H1)),
+  rule_desc('dos_flood attack',
+  1.0)). 
+
+interaction_rule(
+  (linkdosAttack(H1, H2, Protocol) :-
+  vulExists(H3, _, Software, remoteExploit, dos_amplification),
+	linkServiceInfo(H3, Software, Protocol, Perm),
+	l2connection(H1, H3, Protocol),
+  l2connection(H3, H2, Protocol),
+  canAccessHost(H1)),
+  rule_desc('dos_amplification attack',
+  1.0)). 
+
+/************** replay attack *************/
+/* 若主体可以执行spoof攻击，且同样可以执行类似的replay攻击 */
+interaction_rule(
+  (netreplayAttack(H1, H2, Protocol, Port) :-
+  vulExists(H2, _, Software, remoteExploit, replay),
+	netspoofAttack(H1, H2, Protocol, Port)),
+  rule_desc('replay attack',
+  1.0)). 
+
+interaction_rule(
+  (linkreplayAttack(H1, H2, Protocol) :-
+  vulExists(H2, _, Software, remoteExploit, replay),
+	linkspoofAttack(H1, H2, Protocol)),
+  rule_desc('replay attack',
+  1.0)). 
+
+/************** inject attack *************/
+/* 命令注入攻击是一种应用层上的攻击，不是链路层的 */
+interaction_rule( 
+  (netinjectAttack(H) :-
+	vulExists(H, _, Software, remoteExploit, inject),
+	networkServiceInfo(H, Software, Protocol, Port, Perm),
+	netAccess(H, Protocol, Port)),
+  rule_desc('inject attack',
+  1.0)). 
+
+/********** Section execCode ***********/
+/* 主体在该主机上具有恶意执行任意代码的能力 */
+/* 分别通过链路层和网络上的漏洞实现 */
+interaction_rule(
+  (execCode(H, Perm) :-
+	vulExists(H, _, Software, remoteExploit, privEscalation),
+	networkServiceInfo(H, Software, Protocol, Port, Perm),
+	netAccess(H, Protocol, Port)),
+  rule_desc('remote exploit of a server program',
+  1.0)).
+
+interaction_rule(
+  (execCode(H, Perm) :-
+	vulExists(H, _, Software, remoteExploit, privEscalation),
+	linkServiceInfo(H, Software, Protocol, Perm),
+	l2Access(H, Protocol)),
+  rule_desc('remote exploit of a server program',
+  1.0)).
+
+
+/******** Section l2Access ********/
+/* 描述主体可以通过连接层访问主机的能力 */
+interaction_rule(
+  (l2Access(H2, Protocol) :-
+	canAccessHost(H1),  /* Any permission level */
+  l2connection(H1, H2, Protocol)),
+  rule_desc('multi-hop l2access',
+  1.0)).
+
+/******** Section netAccess ********/
+/* 描述主体可以通过网络访问主机的能力 */
+interaction_rule(
+  (netAccess(H2, Protocol, Port) :-
+	canAccessHost(H1),  /* Any permission level */
+  aclNW(H1, H2, Protocol, Port)),
+  rule_desc('multi-hop netaccess',
+  1.0)).
+
+/****** Section canAccessHost ******/
+/* 主体具有在该主机执行任意代码的能力 */
+interaction_rule(
+  (canAccessHost(H) :-
+	execCode(H, _Perm)),
+  rule_desc('Access a host through executing code on the machine',
+  1.0)).
+/* 主体拥有该主机，且有账号 */
+interaction_rule(
+  (canAccessHost(H) :-
+	attackerLocated(H),
+  hasAccount(victim, H, _account)),
+  rule_desc('direct on-host netaccess',
+  1.0)).
+/* 主体可以通过网络访问该主机，且该主机开放此服务，并且主体拥有账号 */
+interaction_rule(
+  (canAccessHost(H) :-
+	netAccess(H,Prot,Port),
+  networkServiceInfo(H, _program, Prot, Port, _user),
+  hasAccount(victim, H, _account)),
+  rule_desc('direct on-host netaccess',
+  1.0)).
+/* 主体可以通过连接层访问该主机，且该主机开放此服务，并且主体拥有账号 */
+interaction_rule(
+  (canAccessHost(H) :-
+	l2Access(H,Prot),
+  linkServiceInfo(H, _program, Prot, _user),
+  hasAccount(victim, H, _account)),
+  rule_desc('direct on-host netaccess',
+  1.0)).
+/********************************************************/
+/*      Software specific knowledge                     */
+/********************************************************/
+
+/*
+explain(logInService(H, Protocol, Port), Text) :-
+	fmt_write_string(Text,
+  "There is a login service running under protocol %S and port %S on host %S.", args(Protocol, Port, H)).
+*/
+
+/* 根据漏洞属性信息扩展 */
+interaction_rule(
+  (vulExists(H, ID, Sw, Range, Consequence):-
+	vulExists(H, ID, Sw),
+	vulProperty(ID, Range, Consequence)),
+  rule_desc('',
+  1)).
+
