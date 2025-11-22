@@ -17,6 +17,7 @@
 
 /* 针对工业机械臂最小的网络系统进行建模，总结出对应的域文件 */
 /* 由于需要展现攻击路径的多跳，漏洞关注于提权漏洞，将原有的账号建模改为权限建模 */
+/*  */
 
 /******************************************************/
 /****         Predicates Declaration              *****/
@@ -27,9 +28,9 @@
 /* 存在机械臂和网络服务器，链路层和应用层进行网络连接 */
 primitive(isWebServer(_host)).
 primitive(isRobot(_host)).
-
-primitive(l2connection(_src, _dst, _prot)).
-primitive(aclNW(_src, _dst, _prot, _port)).
+primitive(isRouter(_host)).
+primitive(l2connection(_src, _dst, _protocol)).
+primitive(aclNW(_src, _dst, _protocol, _port)).
 
 
 /* 描述主体能力 */
@@ -37,8 +38,8 @@ primitive(aclNW(_src, _dst, _prot, _port)).
 primitive(attackerLocated(_host)).
 derived(netAccess(_machine,_protocol,_port)).
 derived(l2Access(_machine,_protocol)).
+/* low权限可以令该主机作为跳板，root权限可以完全控制该主机 */
 derived(canControlHostShell(_host, _perm)).
-derived(execCode(_host, _perm)).
 
 /* 描述主机配置 */
 primitive(networkServiceInfo(_host, _program, _protocol, _port, _perm)).
@@ -58,11 +59,11 @@ meta(advances(_, _)).
 /*   All derived predicates should be tabled          */
 /******************************************************/
 /* 对这些谓词进行tabel化，可以提升推理推理效率 */
-:- table execCode/2.
 :- table netAccess/3.
 :- table l2Access/2.
 :- table canControlHostShell/2.
 :- table vulExists/5.
+:- table l2connection/2.
 
 /******************************************************/
 /****         Interaction Rules                   *****/
@@ -71,49 +72,62 @@ meta(advances(_, _)).
 /* 设计交互规则，这是文件的核心部分，定义了各种攻击场景的推理规则 */
 /* 在mulval的推理引擎下，是从attack_goal开始反推，不断判断各种交互规则是否满足 */
 
-/********** Section execCode ***********/
-/* 主体在该主机上具有恶意执行任意代码的能力 */
-/* 分别通过链路层和网络上的漏洞实现 */
-
-
 /******** Section l2Access ********/
 /* 描述主体可以通过连接层访问主机的能力 */
 
+interaction_rule(
+  (l2Access(H2,_protocol) :-
+  canControlHostShell(H1, _),
+	l2connection(H1, H2, _protocol),
+  ),
+  rule_desc('主体利用一台主机，借此访问另一台主机',
+  1.0)).
+
+interaction_rule(
+  (l2Access(H2,_protocol) :-
+  attackerLocated(_internet),
+	l2connection(_internet, H2, _protocol),
+  ),
+  rule_desc('主体直接由互联网来访问主机',
+  1.0)).
 
 /******** Section netAccess ********/
 /* 描述主体可以通过网络访问主机的能力 */
 
+interaction_rule(
+  (netAccess(H2,_protocol, _port) :-
+  canControlHostShell(H1, _),
+	aclNW(H1, H2, _protocol, _port),
+  ),
+  rule_desc('主体利用一台主机，借此访问另一台主机',
+  1.0)).
 
-/****** Section canControlHost ******/
-/* 主体具有在该主机执行任意代码的能力 */
 interaction_rule(
-  (canControlHost(H) :-
-	execCode(H, _Perm)),
-  rule_desc('Access a host through executing code on the machine',
+  (netAccess(H2,_protocol, _port) :-
+  attackerLocated(_internet),
+	aclNW(H1, H2, _protocol, _port),
+  ),
+  rule_desc('主体直接由互联网来访问主机',
   1.0)).
-/* 主体拥有该主机，且有账号 */
+
+/****** Section canControlHostShell ******/
+/* 用户可以获取该主机的shell权限来用于自己的操作 */
 interaction_rule(
-  (canControlHost(H) :-
-	attackerLocated(H),
-  hasAccount(victim, H, _account)),
-  rule_desc('direct on-host netaccess',
+  (canControlHostShell(H, _):-
+  netAccess(H, _protocol, _port),
+  networkServiceInfo(_host, _program, _protocol, _port, _),
+  vulExists(H,_ , _program, remote, inject)),
+  rule_desc('攻击者可以利用该主机上的网络服务和注入攻击来控制Shell权限',
   1.0)).
-/* 主体可以通过网络访问该主机，且该主机开放此服务，并且主体拥有账号 */
+
 interaction_rule(
-  (canControlHost(H) :-
-	netAccess(H,Prot,Port),
-  networkServiceInfo(H, _program, Prot, Port, _user),
-  hasAccount(victim, H, _account)),
-  rule_desc('direct on-host netaccess',
+  (canControlHostShell(H, root):-
+  canControlHostShell(H, low),
+  vulExists(H ,_ , _, local, privEscalation)),
+  rule_desc('攻击者在获取了low权限之后，利用提权漏洞获得root权限',
   1.0)).
-/* 主体可以通过连接层访问该主机，且该主机开放此服务，并且主体拥有账号 */
-interaction_rule(
-  (canControlHost(H) :-
-	l2Access(H,Prot),
-  linkServiceInfo(H, _program, Prot, _user),
-  hasAccount(victim, H, _account)),
-  rule_desc('direct on-host netaccess',
-  1.0)).
+
+
 /********************************************************/
 /*      Software specific knowledge                     */
 /********************************************************/
@@ -125,4 +139,12 @@ interaction_rule(
 	vulProperty(ID, Range, Consequence)),
   rule_desc('',
   1)).
-
+  
+/* 根据物理拓扑关系进行扩展 */
+interaction_rule(
+  (l2connection(H1, H2, _protocol):-
+  l2connection(H1, _r,, _protocol),
+  l2connection(_r, H2,, _protocol)
+  isRobot(_r)),
+  rule_desc('',
+  1)).
