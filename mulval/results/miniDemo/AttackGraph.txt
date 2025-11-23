@@ -1,0 +1,35 @@
+1,"canControlHostShell(h2,root)","OR",0
+2,"RULE 5 (Privilege escalation from low to root)","AND",0
+3,"vulExists(h2,'CVE-3',prom2_modbus,local,privEscalation)","LEAF",1
+2,3,-1
+4,"canControlHostShell(h2,low)","OR",0
+5,"RULE 4 (Remote exploit via network service injection)","AND",0
+6,"vulExists(h2,'CVE-2',prom2_modbus,remote,inject)","LEAF",1
+5,6,-1
+7,"networkServiceInfo(h2,prom2_modbus,modbus_tcp,502,low)","LEAF",1
+5,7,-1
+8,"netAccess(h2,modbus_tcp,502)","OR",0
+9,"RULE 2 (Access host through another controlled host)","AND",0
+10,"aclNW(h1,h2,modbus_tcp,502)","LEAF",1
+9,10,-1
+11,"canControlHostShell(h1,low)","OR",0
+12,"RULE 4 (Remote exploit via network service injection)","AND",0
+13,"vulExists(h1,'CVE-1',prom1_http,remote,inject)","LEAF",1
+12,13,-1
+14,"networkServiceInfo(h1,prom1_http,http,80,low)","LEAF",1
+12,14,-1
+15,"netAccess(h1,http,80)","OR",0
+16,"RULE 3 (Direct access from internet)","AND",0
+17,"aclNW(internet,h1,http,80)","LEAF",1
+16,17,-1
+18,"attackerLocated(internet)","LEAF",1
+16,18,-1
+15,16,-1
+12,15,-1
+11,12,-1
+9,11,-1
+8,9,-1
+5,8,-1
+4,5,-1
+2,4,-1
+1,2,-1

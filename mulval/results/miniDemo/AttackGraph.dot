@@ -1,0 +1,37 @@
+digraph G {
+	1 [label="1:canControlHostShell(h2,root):0",shape=diamond];
+	2 [label="2:RULE 5 (Privilege escalation from low to root):0",shape=ellipse];
+	3 [label="3:vulExists(h2,'CVE-3',prom2_modbus,local,privEscalation):1",shape=box];
+	4 [label="4:canControlHostShell(h2,low):0",shape=diamond];
+	5 [label="5:RULE 4 (Remote exploit via network service injection):0",shape=ellipse];
+	6 [label="6:vulExists(h2,'CVE-2',prom2_modbus,remote,inject):1",shape=box];
+	7 [label="7:networkServiceInfo(h2,prom2_modbus,modbus_tcp,502,low):1",shape=box];
+	8 [label="8:netAccess(h2,modbus_tcp,502):0",shape=diamond];
+	9 [label="9:RULE 2 (Access host through another controlled host):0",shape=ellipse];
+	10 [label="10:aclNW(h1,h2,modbus_tcp,502):1",shape=box];
+	11 [label="11:canControlHostShell(h1,low):0",shape=diamond];
+	12 [label="12:RULE 4 (Remote exploit via network service injection):0",shape=ellipse];
+	13 [label="13:vulExists(h1,'CVE-1',prom1_http,remote,inject):1",shape=box];
+	14 [label="14:networkServiceInfo(h1,prom1_http,http,80,low):1",shape=box];
+	15 [label="15:netAccess(h1,http,80):0",shape=diamond];
+	16 [label="16:RULE 3 (Direct access from internet):0",shape=ellipse];
+	17 [label="17:aclNW(internet,h1,http,80):1",shape=box];
+	18 [label="18:attackerLocated(internet):1",shape=box];
+	3 -> 	2;
+	6 -> 	5;
+	7 -> 	5;
+	10 -> 	9;
+	13 -> 	12;
+	14 -> 	12;
+	17 -> 	16;
+	18 -> 	16;
+	16 -> 	15;
+	15 -> 	12;
+	12 -> 	11;
+	11 -> 	9;
+	9 -> 	8;
+	8 -> 	5;
+	5 -> 	4;
+	4 -> 	2;
+	2 -> 	1;
+}

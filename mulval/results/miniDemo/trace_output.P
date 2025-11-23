@@ -1,0 +1,48 @@
+primitive(isWebServer,1).
+primitive(isRobot,1).
+primitive(isRouter,1).
+primitive(l2connection,3).
+primitive(aclNW,4).
+primitive(attackerLocated,1).
+primitive(networkServiceInfo,5).
+primitive(linkServiceInfo,4).
+primitive(vulExists,3).
+primitive(vulProperty,3).
+primitive(vulExists,5).
+derived(netAccess,3).
+derived(l2Access,2).
+derived(canControlHostShell,2).
+meta(cvss,2).
+meta(attackGoal,1).
+meta(advances,2).
+
+attack(canControlHostShell(h2,root)).
+
+possible_duplicate_trace_step(because(3,rule_desc('Direct access from internet',1.0),netAccess(h1,http,80),[aclNW(internet,h1,http,80),attackerLocated(internet)])).
+
+possible_duplicate_trace_step(because(4,rule_desc('Remote exploit via network service injection',1.0),canControlHostShell(h1,low),[vulExists(h1,'CVE-1',prom1_http,remote,inject),networkServiceInfo(h1,prom1_http,http,80,low),netAccess(h1,http,80)])).
+
+possible_duplicate_trace_step(because(4,rule_desc('Remote exploit via network service injection',1.0),canControlHostShell(h1,low),[vulExists(h1,'CVE-1',prom1_http,remote,inject),networkServiceInfo(h1,prom1_http,http,80,low),netAccess(h1,http,80)])).
+
+possible_duplicate_trace_step(because(2,rule_desc('Access host through another controlled host',1.0),netAccess(h2,modbus_tcp,502),[aclNW(h1,h2,modbus_tcp,502),canControlHostShell(h1,low)])).
+
+possible_duplicate_trace_step(because(4,rule_desc('Remote exploit via network service injection',1.0),canControlHostShell(h2,low),[vulExists(h2,'CVE-2',prom2_modbus,remote,inject),networkServiceInfo(h2,prom2_modbus,modbus_tcp,502,low),netAccess(h2,modbus_tcp,502)])).
+
+possible_duplicate_trace_step(because(4,rule_desc('Remote exploit via network service injection',1.0),canControlHostShell(h2,low),[vulExists(h2,'CVE-2',prom2_modbus,remote,inject),networkServiceInfo(h2,prom2_modbus,modbus_tcp,502,low),netAccess(h2,modbus_tcp,502)])).
+
+possible_duplicate_trace_step(because(2,rule_desc('Access host through another controlled host',1.0),netAccess(h1,modbus_tcp,502),[aclNW(h2,h1,modbus_tcp,502),canControlHostShell(h2,low)])).
+
+possible_duplicate_trace_step(because(2,rule_desc('Access host through another controlled host',1.0),netAccess(h3,modbus_tcp,502),[aclNW(h2,h3,modbus_tcp,502),canControlHostShell(h2,low)])).
+
+possible_duplicate_trace_step(because(5,rule_desc('Privilege escalation from low to root',1.0),canControlHostShell(h2,root),[vulExists(h2,'CVE-3',prom2_modbus,local,privEscalation),canControlHostShell(h2,low)])).
+
+possible_duplicate_trace_step(because(2,rule_desc('Access host through another controlled host',1.0),netAccess(h1,modbus_tcp,502),[aclNW(h2,h1,modbus_tcp,502),canControlHostShell(h2,root)])).
+
+possible_duplicate_trace_step(because(2,rule_desc('Access host through another controlled host',1.0),netAccess(h3,modbus_tcp,502),[aclNW(h2,h3,modbus_tcp,502),canControlHostShell(h2,root)])).
+
+possible_duplicate_trace_step(because(2,rule_desc('Access host through another controlled host',1.0),netAccess(h2,modbus_tcp,502),[aclNW(h1,h2,modbus_tcp,502),canControlHostShell(h1,low)])).
+
+possible_duplicate_trace_step(because(4,rule_desc('Remote exploit via network service injection',1.0),canControlHostShell(h2,low),[vulExists(h2,'CVE-2',prom2_modbus,remote,inject),networkServiceInfo(h2,prom2_modbus,modbus_tcp,502,low),netAccess(h2,modbus_tcp,502)])).
+
+possible_duplicate_trace_step(because(5,rule_desc('Privilege escalation from low to root',1.0),canControlHostShell(h2,root),[vulExists(h2,'CVE-3',prom2_modbus,local,privEscalation),canControlHostShell(h2,low)])).
+

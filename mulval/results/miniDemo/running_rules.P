@@ -1,0 +1,153 @@
+% MulVAL interaction rules
+% Author : Xinming Ou, Su Zhang
+% Copyright (C) 2011, Argus Cybersecurity Lab, Kansas State University
+
+% This program is free software: you can redistribute it and/or modify
+% it under the terms of the GNU General Public License as published by
+% the Free Software Foundation, either version 3 of the License, or
+% (at your option) any later version.
+% 
+% This program is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+% 
+% You should have received a copy of the GNU General Public License
+% along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+/* 针对工业机械臂最小的网络系统进行建模，总结出对应的域文件 */
+/* 由于需要展现攻击路径的多跳，漏洞关注于提权漏洞，将原有的账号建模改为权限建模 */
+/*  */
+
+/******************************************************/
+/****         Predicates Declaration              *****/
+/******************************************************/
+/* 定义了两类谓词，原始谓词和派生谓词 */
+
+/* 描述网络拓扑和通信情况 */
+/* 存在机械臂和网络服务器，链路层和应用层进行网络连接 */
+primitive(isWebServer(_host)).
+primitive(isRobot(_host)).
+primitive(isRouter(_host)).
+primitive(l2connection(_src, _dst, _protocol)).
+primitive(aclNW(_src, _dst, _protocol, _port)).
+
+
+/* 描述主体能力 */
+/* 主体可以访问主机的网络服务，可以控制主机，控制主机以shell为代表，有高权限和低权限之分 */
+primitive(attackerLocated(_host)).
+derived(netAccess(_machine,_protocol,_port)).
+derived(l2Access(_machine,_protocol)).
+/* low权限可以令该主机作为跳板，root权限可以完全控制该主机 */
+derived(canControlHostShell(_host, _perm)).
+
+/* 描述主机配置 */
+primitive(networkServiceInfo(_host, _program, _protocol, _port, _perm)).
+primitive(linkServiceInfo(_host, _program, _protocol, _perm)).
+
+/* 描述漏洞信息 */
+primitive(vulExists(_host, _vulID, _program)).
+primitive(vulProperty(_vulID, _range, _consequence)).
+primitive(vulExists(_machine,_vulID,_program,_range, _consequence)).
+
+meta(cvss(_vulID, _ac)).
+meta(attackGoal(_)).
+meta(advances(_, _)).
+/******************************************************/
+/****         Tabling Predicates                  *****/
+/*   All derived predicates should be tabled          */
+/******************************************************/
+/* 对这些谓词进行tabel化，可以提升推理推理效率 */
+:- table netAccess/3.
+:- table l2Access/2.
+:- table canControlHostShell/2.
+:- table vulExists/5.
+:- table l2connection/2.
+
+/******************************************************/
+/****         Interaction Rules                   *****/
+/******************************************************/
+
+/* 设计交互规则，这是文件的核心部分，定义了各种攻击场景的推理规则 */
+/* 在mulval的推理引擎下，是从attack_goal开始反推，不断判断各种交互规则是否满足 */
+
+/******** Section l2Access ********/
+/* 描述主体可以通过连接层访问主机的能力 */
+
+/* 主体利用一台主机，借此访问另一台主机 */
+interaction_rule(
+  (l2Access(H2,_protocol) :-
+  canControlHostShell(H1, _),
+	l2connection(H1, H2, _protocol)
+  ),
+  rule_desc('Access host through another controlled host',
+  1.0)).
+/* 主体直接由互联网来访问主机 */
+interaction_rule(
+  (l2Access(H2,_protocol) :-
+  attackerLocated(_internet),
+	l2connection(_internet, H2, _protocol)
+  ),
+  rule_desc('Direct access from internet',
+  1.0)).
+
+/******** Section netAccess ********/
+/* 描述主体可以通过网络访问主机的能力 */
+
+/* 主体利用一台主机，借此访问另一台主机 */
+interaction_rule(
+  (netAccess(H2,_protocol, _port) :-
+  canControlHostShell(H1, _),
+	aclNW(H1, H2, _protocol, _port)
+  ),
+  rule_desc('Access host through another controlled host',
+  1.0)).
+/* 主体直接由互联网来访问主机 */
+interaction_rule(
+  (netAccess(H2,_protocol, _port) :-
+  attackerLocated(_internet),
+	aclNW(_internet, H2, _protocol, _port)
+  ),
+  rule_desc('Direct access from internet',
+  1.0)).
+
+/****** Section canControlHostShell ******/
+/* 用户可以获取该主机的shell权限来用于自己的操作 */
+
+/* 攻击者可以利用该主机上的网络服务和注入攻击来控制Shell权限 */
+interaction_rule(
+  (canControlHostShell(H, low):-
+  netAccess(H, _protocol, _port),
+  networkServiceInfo(H, _program, _protocol, _port, _),
+  vulExists(H,_ , _program, remote, inject)),
+  rule_desc('Remote exploit via network service injection',
+  1.0)).
+/* 攻击者在获取了low权限之后，利用提权漏洞获得root权限 */
+interaction_rule(
+  (canControlHostShell(H, root):-
+  canControlHostShell(H, low),
+  vulExists(H ,_ , _, local, privEscalation)),
+  rule_desc('Privilege escalation from low to root',
+  1.0)).
+
+
+/********************************************************/
+/*      Software specific knowledge                     */
+/********************************************************/
+
+/* 根据漏洞属性信息扩展 */
+interaction_rule(
+  (vulExists(H, ID, Sw, Range, Consequence):-
+	vulExists(H, ID, Sw),
+	vulProperty(ID, Range, Consequence)),
+  rule_desc('',
+  1)).
+  
+/* 根据物理拓扑关系进行扩展 */
+interaction_rule(
+  (l2connection(H1, H2, _protocol):-
+  l2connection(H1, _r, _protocol),
+  l2connection(_r, H2, _protocol),
+  isRobot(_r)),
+  rule_desc('',
+  1)).
